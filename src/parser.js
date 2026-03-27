@@ -152,11 +152,9 @@ export function parse(text) {
   nextId = 0
   const nodes = {}
 
-  // Step 1: Escape Cotton dot-notation
-  const escaped = escapeCottonDots(text)
-
-  // Step 2: Replace template constructs with placeholders
-  const matches = [...escaped.matchAll(TEMPLATE_TAG_RE)]
+  // Step 1: Replace template constructs with placeholders FIRST.
+  // This protects Cotton tags inside comments/tags from dot-escaping.
+  const matches = [...text.matchAll(TEMPLATE_TAG_RE)]
 
   let content = ''
   let lastEnd = 0
@@ -165,7 +163,7 @@ export function parse(text) {
     const raw = match[0]
     const pos = match.index
 
-    content += escaped.slice(lastEnd, pos)
+    content += text.slice(lastEnd, pos)
 
     const id = makeId()
 
@@ -179,14 +177,14 @@ export function parse(text) {
     }
 
     // Count newlines between previous construct and this one
-    const textBefore = escaped.slice(lastEnd, pos)
+    const textBefore = text.slice(lastEnd, pos)
     const preNewLines = (textBefore.match(/\n/g) || []).length
 
     // A tag is "standalone" if it's the first non-whitespace on its line.
     // Standalone tags are safe to have hardlines before them; inline tags
     // (e.g., inside attribute values) are not.
-    const lineStart = escaped.lastIndexOf('\n', pos - 1) + 1
-    const leadingText = escaped.slice(lineStart, pos)
+    const lineStart = text.lastIndexOf('\n', pos - 1) + 1
+    const leadingText = text.slice(lineStart, pos)
     const standalone = leadingText.trim() === ''
 
     nodes[id] = {
@@ -203,7 +201,12 @@ export function parse(text) {
     content += id
     lastEnd = pos + raw.length
   }
-  content += escaped.slice(lastEnd)
+  content += text.slice(lastEnd)
+
+  // Step 2: Escape Cotton dot-notation in the remaining HTML content.
+  // Template constructs are already placeholders, so dots inside
+  // comments like {# <c-atoms.button> #} are protected.
+  content = escapeCottonDots(content)
 
   // Step 3: Match block-level tags
   content = matchBlocks(content, nodes)

@@ -179,6 +179,14 @@ describe('format', () => {
     expect(output).not.toMatch(/\{# comment one #\}[^\n]*\{# comment two #\}/)
   })
 
+  test('preserves Cotton dots inside comments', async () => {
+    const input =
+      '{# Usage: <c-molecules.toast-container :messages="msgs" /> #}\n<div>hi</div>\n'
+    const output = await format(input)
+    expect(output).toContain('c-molecules.toast-container')
+    expect(output).not.toContain('--dot--')
+  })
+
   test('wraps long attributes multi-line', async () => {
     const input =
       '<c-molecules.form-field label="Email" type="email" name="email" required value="{{ form.email.value|default:\'\' }}" help_text="We will never share your email" />\n'
